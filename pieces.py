@@ -58,6 +58,7 @@ class Piece:
     def move(self, coord):
         self.coord = coord
         self.moved = True
+        print('[MOVE]', self)
 
     def display(self):
         marge = int((DIMC - DIM_PIECE[0])/2)

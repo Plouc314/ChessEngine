@@ -1,120 +1,4 @@
 
-class Movement:
-    players = None
-
-    @classmethod
-    def move_pawn(cls, piece, coord, attack):
-        if not attack:
-            # pawn move
-            if piece.color == 'white':
-                if coord[0] == piece.x and piece.y - 1 == coord[1]: # advance of one case
-                    return True
-            else:
-                if coord[0] == piece.x and piece.y + 1 == coord[1]: # advance of one case
-                    return True
-            
-            if not piece.moved:
-                # check for two case move
-                if piece.color == 'white':
-                    if coord[0] == piece.x and piece.y - 2 == coord[1]: # advance of one case
-                        return True
-                else:
-                    if coord[0] == piece.x and piece.y + 2 == coord[1]: # advance of one case
-                        return True
-        else:
-            # pawn attack
-            if piece.color == 'white':
-                if (coord[0] == piece.x + 1 or coord[0] == piece.x - 1) and piece.y - 1 == coord[1]:
-                    return True
-            else:
-                if (coord[0] == piece.x + 1 or coord[0] == piece.x - 1) and piece.y + 1 == coord[1]:
-                    return True
-
-    @classmethod
-    def move_bishop(cls, piece, coord, attack):
-        # check if coord in diagonale
-        if abs(piece.x - coord[0]) == abs(piece.y - coord[1]): 
-            # select case to check
-            if piece.x > coord[0]:
-                dx = -1
-            else:
-                dx = 1
-            
-            if piece.y > coord[1]:
-                dy = -1
-            else:
-                dy = 1
-            
-            to_check_coords = []
-            for i in range(abs(piece.x - coord[0])):
-                new_coord = (piece.x + (i+1)*dx, piece.y + (i+1)*dy)
-                to_check_coords.append(new_coord)
-            
-            if attack:
-                # pop last coord -> attacked piece
-                to_check_coords.pop(-1)
-
-            # check each case to know if a piece block
-            for c in to_check_coords:
-                w_piece = cls.players['white'].get_piece(c)
-                b_piece = cls.players['black'].get_piece(c)
-                if w_piece or b_piece:
-                    return
-            # if nothing block -> ok
-            return True
-                
-    @classmethod
-    def move_knight(cls, piece, coord, attack):
-        dx = abs(piece.x - coord[0])
-        dy = abs(piece.y - coord[1])
-        if dx in [1,2] and dy in [1,2] and not (dx == 1 and dy == 1):
-            return True
-    
-    @classmethod
-    def move_rock(cls, piece, coord, attack):
-        # check if coord in line
-        if piece.x == coord[0] or piece.y == coord[1]:
-            to_check_coords = []
-            if piece.x == coord[0]:
-                if piece.y > coord[1]:
-                    dy = -1
-                else:
-                    dy = 1
-                for i in range(abs(piece.y-coord[1])):
-                    new_coord = (piece.x, piece.y + (i+1)*dy)
-                    to_check_coords.append(new_coord)
-            else:
-                if piece.x > coord[0]:
-                    dx = -1
-                else:
-                    dx = 1
-                for i in range(abs(piece.x-coord[0])):
-                    new_coord = (piece.x + (i+1)*dx, piece.y)
-                    to_check_coords.append(new_coord)
-            
-            if attack:
-                # pop last coord -> attacked piece
-                to_check_coords.pop(-1)
-            
-            # check each case to know if a piece block
-            for c in to_check_coords:
-                w_piece = cls.players['white'].get_piece(c)
-                b_piece = cls.players['black'].get_piece(c)
-                if w_piece or b_piece:
-                    return
-            # if nothing block -> ok
-            return True
-
-    @classmethod
-    def move_queen(cls, piece, coord, attack):
-        if cls.move_bishop(piece, coord, attack) or cls.move_rock(piece, coord, attack):
-            return True
-    
-    @classmethod
-    def move_king(cls, piece, coord, attack):
-        if abs(piece.x - coord[0]) in [0,1] and abs(piece.y - coord[1]) in [0,1]:
-            return True
-
 class AttCoord:
     Game = None
 
@@ -356,16 +240,20 @@ class PossibleMove:
                 coords.append(coord)
             if not piece.moved:
                 coord = (piece.x, piece.y-2)
-                if not AttCoord.get_coord_state(coord, piece):
-                    coords.append(coord)
+                # check inter coord too
+                if not AttCoord.get_coord_state((piece.x, piece.y-1), piece):
+                    if not AttCoord.get_coord_state(coord, piece):
+                        coords.append(coord)
         else:
             coord = (piece.x, piece.y+1)
             if not AttCoord.get_coord_state(coord, piece):
                 coords.append(coord)
             if not piece.moved:
                 coord = (piece.x, piece.y+2)
-                if not AttCoord.get_coord_state(coord, piece):
-                    coords.append(coord)
+                # check inter coord too
+                if not AttCoord.get_coord_state((piece.x, piece.y+1), piece):
+                    if not AttCoord.get_coord_state(coord, piece):
+                        coords.append(coord)
         
         # check for kingcheck
         to_rem = []

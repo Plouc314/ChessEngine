@@ -1,14 +1,12 @@
 from base import E, scale, screen, Button, C, inter
 from pieces import Pawn, Bishop, King, Queen, Rock, Knight
 from board import Board
-from move import Movement, AttCoord, PossibleMove
-import pygame
-from math import floor
-from copy import deepcopy
+from live_play import LivePlay
+from move import AttCoord, PossibleMove
 
 DIMC = E(200)
 
-
+# classic pieces placement
 white_config = [
     {'name':'pawn','coord':(0,6),'c':'white'},
     {'name':'pawn','coord':(1,6),'c':'white'},
@@ -48,6 +46,9 @@ black_config = [
 ]
 
 class Player:
+    '''
+    Store and display piece of player
+    '''
     in_check = False
     def __init__(self, config):
         self.create_pieces(config)
@@ -99,70 +100,80 @@ def inv_c(color):
     else:
         return 'white'
 
-DIM_PBUTTON = scale((200,200))
-POS_PMENU = scale((1600, 800))
-
-class PromMenu:
-    def __init__(self, player, pos):
-        queen_img = player.get_piece_by_name('queen').img
-        self.button_queen = Button(DIM_PBUTTON, C.LIGHT_GREY, (pos[0]+E(50),pos[1]),image=queen_img)
-        bishop_img = player.get_piece_by_name('bishop').img
-        self.button_bishop = Button(DIM_PBUTTON, C.LIGHT_GREY, (pos[0]+E(300),pos[1]),image=bishop_img)
-        rock_img = player.get_piece_by_name('rock').img
-        self.button_rock = Button(DIM_PBUTTON, C.LIGHT_GREY, (pos[0]+E(50),pos[1]+E(250)),image=rock_img)
-        knight_img = player.get_piece_by_name('knight').img
-        self.button_knight = Button(DIM_PBUTTON, C.LIGHT_GREY, (pos[0]+E(300),pos[1]+E(250)),image=knight_img)
-        self.state = 'wait'
-    
-    def react_events(self, events, pressed):
-        if self.button_knight.pushed(events):
-            self.state = 'done'
-            self.piece_name = 'knight'
-        if self.button_queen.pushed(events):
-            self.state = 'done'
-            self.piece_name = 'queen'
-        if self.button_rock.pushed(events):
-            self.state = 'done'
-            self.piece_name = 'rock'
-        if self.button_bishop.pushed(events):
-            self.state = 'done'
-            self.piece_name = 'bishop'
-
-    def display(self):
-        self.button_queen.display()
-        self.button_bishop.display()
-        self.button_rock.display()
-        self.button_knight.display()
-
 class Game:
+    '''
+    Manage game: Execute turns, check game's end, use move's Objects to handeln piece movements
+
+    Must set control objects:
+        LivePlay
+        other: must have play_turn(), promote(piece) methods
+    
+    Set start configuration:
+        pass configurations in set_players() methods
+    '''
     menu = None
-    case_selected = None
-    piece_selected = None
+    # conf - change white/black conf to change pieces a start
+    white_config = white_config
+    black_config = black_config
+    # func that are execute when players play
+    controls = None
+    control_white = None
+    control_black = None
     
     @classmethod
     def init(cls, players):
-        cls.select = False
+        # set or reset Game states
         cls.turn = True
         cls.winner = None
         cls.ended = False
         cls.players = players
-        pmenu_white = PromMenu(players['white'],POS_PMENU)
-        pmenu_black = PromMenu(players['black'],POS_PMENU)
-        cls.pmenus = {'white':pmenu_white, 'black':pmenu_black}
-        Movement.players = players
-        AttCoord.Game = cls
-        PossibleMove.players = players
+        if cls.controls:
+            cls.controls['white'].player = players['white']
+            cls.controls['black'].player = players['black']
 
+        # set Game/players in other 'static' objects
+        AttCoord.Game = cls
+        LivePlay.Game = cls
+        PossibleMove.players = players
+            
     @classmethod
-    def set_players(cls):
-        '''Classic set up. For custom: use Config and init method'''
-        white_player = Player(white_config)
-        black_player = Player(black_config)
+    def set_players(cls, white_config=None, black_config=None):
+        '''If no arguments: classic set up'''
+        
+        if not white_config:
+            white_player = Player(cls.white_config)
+        else:
+            white_player = Player(white_config)
+            cls.white_config = white_config
+        
+        if not black_config:
+            black_player = Player(cls.black_config)
+        else:
+            black_player = Player(black_config)
+            cls.black_config = black_config
 
         cls.init({'white':white_player, 'black':black_player})
 
     @classmethod
+    def set_control_methods(cls, control_white, control_black):
+        cls.control_white = control_white
+        cls.control_black = control_black
+        cls.controls = {'white':cls.control_white, 'black':cls.control_black}
+        # check that on turn methods are set
+        if not cls.control_white or not cls.control_black:
+            raise ValueError('Game: must set on_turn methods.')
+
+    @classmethod
+    def play_turn(cls):
+        # execute turn
+        if cls.turn:
+            cls.control_white.play_turn()
+        else:
+            cls.control_black.play_turn()
+
+    @classmethod
     def check_for_check(cls, color, kingcheck=True):
+        '''Check if king is attacked by an opponent piece'''
         if color == 'white':
             king_coord = cls.players['white'].king.coord
             # check if king coord is attack by an opponent piece
@@ -177,52 +188,6 @@ class Game:
                     return True
 
     @classmethod
-    def handeln_case(cls, coord):
-        # get case
-        case = Board.get_case(coord)
-        case.select()
-        if not cls.case_selected:
-            cls.case_selected = case
-        elif cls.case_selected and not case is cls.case_selected:
-            cls.case_selected.deselect()
-            cls.case_selected = case
-
-    @classmethod
-    def handeln_castle_case(cls, color, can_long, can_short):
-        line = PossibleMove.get_line(color)
-        
-        if can_long:
-            case = Board.get_case((2,line))
-            case.possible_move = True
-        if can_short:
-            case = Board.get_case((6,line))
-            case.possible_move = True
-
-    @classmethod
-    def check_select_piece(cls, coord, player):
-        selected_piece = player.get_piece(coord)
-        # check if piece found
-        if selected_piece:
-            cls.piece_selected = selected_piece
-            cls.select = True
-            
-            # update selected case
-            cls.handeln_case(coord)
-
-            # display possible moves
-            poss_moves = cls.get_possibles_moves(selected_piece)
-
-            if selected_piece.name == 'king':
-                # add castle moves
-                can_long, can_short = PossibleMove.get_castle(player.color)
-
-                cls.handeln_castle_case(player.color, can_long, can_short)
-
-            for coord in poss_moves:
-                case = Board.get_case(coord)
-                case.possible_move = True
-
-    @classmethod
     def handeln_movement(cls, piece, coord):
         '''Handeln pieces movement'''
         attack = False
@@ -230,10 +195,11 @@ class Game:
         if cls.players[inv_c(piece.color)].get_piece(coord):
             attack = True
 
-        cls.move(piece, coord, attack)
+        return cls.move(piece, coord, attack)
     
     @classmethod
     def move(cls, piece, coord, attack):
+        '''Check if coord are in piece's possible moves -> play move'''
         if attack:
             if coord in AttCoord.get(piece):
                 attacked_piece = cls.get_piece(coord)
@@ -241,6 +207,7 @@ class Game:
                 piece.move(coord)
                 # pass a turn
                 cls.end_turn(piece.color)
+                return True
         else:
             if coord in PossibleMove.get(piece):
                 piece.move(coord)
@@ -248,6 +215,7 @@ class Game:
                     cls.check_pawn_promotion(piece)
                 # pass a turn
                 cls.end_turn(piece.color)
+                return True
             elif piece.name == 'king':
                 cls.check_castle_moves(piece)
 
@@ -277,42 +245,17 @@ class Game:
 
     @classmethod
     def check_pawn_promotion(cls, piece):
+        '''Check if pawn is promoting -> exec control: promote(piece) func'''
         # line of promotion
         line = PossibleMove.get_line(inv_c(piece.color))
 
         if piece.y == line:
             # promote
-            cls.run_prom_menu(piece)
-
-    @classmethod
-    def run_prom_menu(cls, piece):
-        done = False
-        # freeze normal execution (in main), wait for player to decide which piece take
-        while not done:
-            pressed, events = inter.run(fill=False) # keep all displayed thing
-            cls.pmenus[piece.color].display()
-            cls.pmenus[piece.color].react_events(events, pressed)
-            if cls.pmenus[piece.color].state == 'done':
-                done = True
-                piece_name = cls.pmenus[piece.color].piece_name
-        
-        # create new piece
-        if piece_name == 'queen':
-            new_piece = Queen(piece.coord, piece.color)
-        elif piece_name == 'bishop':
-            new_piece = Bishop(piece.coord, piece.color)
-        elif piece_name == 'rock':
-            new_piece = Rock(piece.coord, piece.color)
-        elif piece_name == 'knight':
-            new_piece = Knight(piece.coord, piece.color)
-        
-        # remove pawn
-        cls.players[piece.color].pieces.remove(piece)
-        # add new one
-        cls.players[piece.color].pieces.append(new_piece)
+            cls.controls[piece.color].promote(piece)
 
     @classmethod
     def get_possibles_moves(cls, piece):
+        '''Get all possible moves (for a piece)'''
         movements = PossibleMove.get(piece)
         alls = AttCoord.get(piece)
         for coord in alls:
@@ -334,14 +277,13 @@ class Game:
     def deselect(cls):
         for case in Board.cases:
             case.possible_move = False
-        cls.case_selected.deselect()
-        cls.select = False
 
     @classmethod
     def end_turn(cls, color):
         cls.turn = not cls.turn
         # check if the game is over
         cls.check_end_game(inv_c(color))
+        cls.deselect()
 
     @classmethod
     def check_end_game(cls, color):
@@ -362,26 +304,33 @@ class Game:
             cls.ended = True
 
     @classmethod
-    def react_events(cls, events, pressed):
-        # select current player 
-        if cls.turn:
-            player = cls.players['white']
-        else:
-            player = cls.players['black']
-
-        for event in events:
-            if event.type == pygame.MOUSEBUTTONUP:
-                # check for selected pieces
-                mouse_pos = pygame.mouse.get_pos()
-                x = floor(mouse_pos[0]/DIMC)
-                y = floor(mouse_pos[1]/DIMC)
-                # if nothing selected -> select
-                if not cls.select:
-                    cls.check_select_piece((x,y), player)
-                else:
-                    cls.handeln_movement(cls.piece_selected, (x,y))
-
-    @classmethod
     def display(cls):
         cls.players['white'].display()
         cls.players['black'].display()
+
+import pickle
+
+class API:
+    
+    @classmethod
+    def get_board_state(cls):
+        coords_states = []
+        for x in range(8):
+            for y in range(8):
+                piece = Game.get_piece((x,y))
+                if piece:
+                    d = {'x':x,'y':y,'piece':piece.name,'color':piece.color}
+                else:
+                    d = {'x':x,'y':y,'piece':None,'color':None}
+                coords_states.append(d)
+        
+        # store state
+        with open('state.pickle','wb') as file:
+            pickle.dump(coords_states, file)
+        return coords_states
+
+    @classmethod
+    def run(cls, player):
+        pass
+
+        
