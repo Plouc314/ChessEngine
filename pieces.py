@@ -1,34 +1,3 @@
-from base import screen, Form, C, E, scale
-import pygame
-
-DIM_PIECE = scale((160,160))
-DIMC = E(200)
-
-# load imgs
-white_pawn = pygame.image.load('imgs/pawn2.png')
-white_pawn = pygame.transform.scale(white_pawn,DIM_PIECE)
-white_bishop = pygame.image.load('imgs/bishop2.png')
-white_bishop = pygame.transform.scale(white_bishop,DIM_PIECE)
-white_rock = pygame.image.load('imgs/rock2.png')
-white_rock = pygame.transform.scale(white_rock,DIM_PIECE)
-white_queen = pygame.image.load('imgs/queen2.png')
-white_queen = pygame.transform.scale(white_queen,DIM_PIECE)
-white_king = pygame.image.load('imgs/king2.png')
-white_king = pygame.transform.scale(white_king,DIM_PIECE)
-white_knight = pygame.image.load('imgs/knight2.png')
-white_knight = pygame.transform.scale(white_knight,DIM_PIECE)
-black_pawn = pygame.image.load('imgs/pawn.png')
-black_pawn = pygame.transform.scale(black_pawn,DIM_PIECE)
-black_bishop = pygame.image.load('imgs/bishop.png')
-black_bishop = pygame.transform.scale(black_bishop,DIM_PIECE)
-black_rock = pygame.image.load('imgs/rock.png')
-black_rock = pygame.transform.scale(black_rock,DIM_PIECE)
-black_queen = pygame.image.load('imgs/queen.png')
-black_queen = pygame.transform.scale(black_queen,DIM_PIECE)
-black_king = pygame.image.load('imgs/king.png')
-black_king = pygame.transform.scale(black_king,DIM_PIECE)
-black_knight = pygame.image.load('imgs/knight.png')
-black_knight = pygame.transform.scale(black_knight,DIM_PIECE)
 
 class Piece:
     def __init__(self, coord, color):
@@ -61,64 +30,83 @@ class Piece:
         print('[MOVE]', self)
 
     def display(self):
-        marge = int((DIMC - DIM_PIECE[0])/2)
-        x = self.coord[0] * DIMC + marge
-        y = self.coord[1] * DIMC + marge
-        screen.blit(self.img, (x,y))
+        '''Only implemented if graphics
+        
+        Allow to not import pygame and base in this file
+        '''
+        pass
 
 class Pawn(Piece):
     name = 'pawn'
+    black_img = None
+    white_img = None
     def __init__(self, coord, color):
         super().__init__(coord, color)
-        if color == 'black':
-            self.img = black_pawn
-        else:
-            self.img = white_pawn
+        if self.black_img:
+            if color == 'black':
+                self.img = self.black_img
+            else:
+                self.img = self.white_img
 
 class Bishop(Piece):
     name = 'bishop'
+    black_img = None
+    white_img = None
     def __init__(self, coord, color):
         super().__init__(coord, color)
-        if color == 'black':
-            self.img = black_bishop
-        else:
-            self.img = white_bishop
+        if self.black_img:
+            if color == 'black':
+                self.img = self.black_img
+            else:
+                self.img = self.white_img
         
 class Rock(Piece):
     name = 'rock'
+    black_img = None
+    white_img = None
     def __init__(self, coord, color):
         super().__init__(coord, color)
-        if color == 'black':
-            self.img = black_rock
-        else:
-            self.img = white_rock
+        if self.black_img:
+            if color == 'black':
+                self.img = self.black_img
+            else:
+                self.img = self.white_img
 
 class Queen(Piece):
     name = 'queen'
+    black_img = None
+    white_img = None
     def __init__(self, coord, color):
         super().__init__(coord, color)
-        if color == 'black':
-            self.img = black_queen
-        else:
-            self.img = white_queen
+        if self.black_img:
+            if color == 'black':
+                self.img = self.black_img
+            else:
+                self.img = self.white_img
 
 class King(Piece):
     name = 'king'
+    black_img = None
+    white_img = None
     def __init__(self, coord, color):
         super().__init__(coord, color)
-        if color == 'black':
-            self.img = black_king
-        else:
-            self.img = white_king
+        if self.black_img:
+            if color == 'black':
+                self.img = self.black_img
+            else:
+                self.img = self.white_img
 
 class Knight(Piece):
     name = 'knight'
+    black_img = None
+    white_img = None
     def __init__(self, coord, color):
         super().__init__(coord, color)
-        if color == 'black':
-            self.img = black_knight
-        else:
-            self.img = white_knight
+        if self.black_img:
+            if color == 'black':
+                self.img = self.black_img
+            else:
+                self.img = self.white_img
 
 
 

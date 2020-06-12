@@ -1,6 +1,6 @@
 
 class AttCoord:
-    Game = None
+    ChessGame = None
 
     @classmethod
     def get(cls, piece, kingcheck=True):
@@ -28,11 +28,11 @@ class AttCoord:
         '''Check for blocking piece and for kingcheck'''
         # check piece of same color
         if piece.color == 'white':
-            same_piece = cls.Game.players['white'].get_piece(coord)
-            opponent_piece = cls.Game.players['black'].get_piece(coord)
+            same_piece = cls.ChessGame.players['white'].get_piece(coord)
+            opponent_piece = cls.ChessGame.players['black'].get_piece(coord)
         else:
-            same_piece = cls.Game.players['black'].get_piece(coord)
-            opponent_piece = cls.Game.players['white'].get_piece(coord)
+            same_piece = cls.ChessGame.players['black'].get_piece(coord)
+            opponent_piece = cls.ChessGame.players['white'].get_piece(coord)
         if same_piece:
             return 'block'
         
@@ -58,22 +58,22 @@ class AttCoord:
         if not attack:
             piece.coord = coord
             # check if there is a kingcheck
-            is_check = cls.Game.check_for_check(piece.color, False)
+            is_check = cls.ChessGame.check_for_check(piece.color, False)
             piece.coord = original_coord
             if is_check:
                 # check so can't move piece
                 return False
         else:
             # remove temporarily the attacked piece
-            attacked_piece = cls.Game.get_piece(coord)
-            cls.Game.players[attacked_piece.color].pieces.remove(attacked_piece)
+            attacked_piece = cls.ChessGame.get_piece(coord)
+            cls.ChessGame.players[attacked_piece.color].pieces.remove(attacked_piece)
             # move the attacking piece AFTER
             piece.coord = coord
             # check if there is a kingcheck
-            is_check = cls.Game.check_for_check(piece.color, False)
+            is_check = cls.ChessGame.check_for_check(piece.color, False)
             # revert changes
             piece.coord = original_coord
-            cls.Game.players[attacked_piece.color].pieces.append(attacked_piece)
+            cls.ChessGame.players[attacked_piece.color].pieces.append(attacked_piece)
             if is_check:
                 # check so can't move piece
                 return False
@@ -175,7 +175,6 @@ class AttCoord:
     @classmethod
     def get_king(cls, piece, kingcheck=True):
         coords = []
-        coords.append((piece.x,piece.y))
         coords.append((piece.x+1,piece.y+1))
         coords.append((piece.x-1,piece.y+1))
         coords.append((piece.x-1,piece.y-1))
@@ -320,7 +319,7 @@ class PossibleMove:
         # simul move and look if there's a check
         king.coord = (2,line)
         rock.coord = (3,line)
-        is_check = AttCoord.Game.check_for_check(color, False)
+        is_check = AttCoord.ChessGame.check_for_check(color, False)
         # reset coord
         king.coord = (4,line)
         rock.coord = (0,line)
@@ -368,7 +367,7 @@ class PossibleMove:
         # simul move and look if there's a check
         king.coord = (6,line)
         rock.coord = (5,line)
-        is_check = AttCoord.Game.check_for_check(color, False)
+        is_check = AttCoord.ChessGame.check_for_check(color, False)
         # reset coord
         king.coord = (4,line)
         rock.coord = (7,line)

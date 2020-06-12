@@ -1,18 +1,17 @@
-from base import inter, scale
-from board import Board
-from game import Game
-from menu import Menu
+from interface import Interface
+
+Interface.setup((2200, 1600), 'Chess', scale_factor=0.7)
+
+from graphics import Board, Menu
+from game import ChessGame
 from live_play import LivePlay
 from tests import Tests
-import pygame
+import bruteforce
 
-POS_MENU = scale((1600, 0))
 
-menu = Menu(POS_MENU, Game)
+menu = Menu(ChessGame)
 
-Board.create_cases()
-
-Game.menu = menu
+ChessGame.menu = menu
 
 white_conf = [
     {'name':'king','coord':(2,7),'c':'white'},
@@ -30,18 +29,25 @@ black_conf = [
     {'name':'rock','coord':(7,0),'c':'black'},
 ]
 
-Game.set_players()
-Game.set_control_methods(LivePlay('white'), LivePlay('black'))
+ChessGame.set_players()
 
-Tests.run(Game)
+LivePlay.ChessGame = ChessGame
 
-while inter.running:
-    pressed, events = inter.run()
+#agent_white = bruteforce.Agent('white', ChessGame)
+#agent_black = bruteforce.Agent('black', ChessGame)
+
+
+ChessGame.set_control_methods(LivePlay('white'), LivePlay('black'))
+
+Tests.run(ChessGame)
+
+while Interface.running:
+    pressed, events = Interface.run()
     Board.display()
     menu.react_events(events, pressed)
     menu.display()
-    Game.display()
+    ChessGame.display()
     if menu.state == 'run':
-        Game.play_turn()
-        if Game.ended:
-            menu.end_game(Game.winner)
+        ChessGame.play_turn()
+        if ChessGame.ended:
+            menu.end_game(ChessGame.winner)

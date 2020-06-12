@@ -1,10 +1,6 @@
-from base import E, scale, screen, Button, C, inter
 from pieces import Pawn, Bishop, King, Queen, Rock, Knight
-from board import Board
-from live_play import LivePlay
 from move import AttCoord, PossibleMove
 
-DIMC = E(200)
 
 # classic pieces placement
 white_config = [
@@ -82,7 +78,7 @@ class Player:
 
     def get_piece(self, coord):
         for piece in self.pieces:
-            if piece.coord == coord:
+            if piece.coord[0] == coord[0] and piece.coord[1] == coord[1]:
                 return piece    
 
     def get_piece_by_name(self, name):
@@ -91,6 +87,7 @@ class Player:
                 return piece
 
     def display(self):
+        '''Piece.display must be implemented'''
         for piece in self.pieces:
             piece.display()
 
@@ -100,16 +97,19 @@ def inv_c(color):
     else:
         return 'white'
 
-class Game:
+class ChessGame:
     '''
     Manage game: Execute turns, check game's end, use move's Objects to handeln piece movements
 
-    Must set control objects:
+    Can set control objects:
         LivePlay
+        bruteforce.Agent (in dev)
         other: must have play_turn(), promote(piece) methods
     
     Set start configuration:
         pass configurations in set_players() methods
+    
+    Can set a menu.
     '''
     menu = None
     # conf - change white/black conf to change pieces a start
@@ -119,6 +119,7 @@ class Game:
     controls = None
     control_white = None
     control_black = None
+    last_move = None
     
     @classmethod
     def init(cls, players):
@@ -128,12 +129,11 @@ class Game:
         cls.ended = False
         cls.players = players
         if cls.controls:
-            cls.controls['white'].player = players['white']
-            cls.controls['black'].player = players['black']
+            cls.controls['white'].set_player(players['white'])
+            cls.controls['black'].set_player(players['black'])
 
-        # set Game/players in other 'static' objects
-        AttCoord.Game = cls
-        LivePlay.Game = cls
+        # set ChessGame/players in other 'static' objects
+        AttCoord.ChessGame = cls
         PossibleMove.players = players
             
     @classmethod
@@ -161,7 +161,7 @@ class Game:
         cls.controls = {'white':cls.control_white, 'black':cls.control_black}
         # check that on turn methods are set
         if not cls.control_white or not cls.control_black:
-            raise ValueError('Game: must set on_turn methods.')
+            raise ValueError('ChessGame: must set on_turn methods.')
 
     @classmethod
     def play_turn(cls):
@@ -190,6 +190,7 @@ class Game:
     @classmethod
     def handeln_movement(cls, piece, coord):
         '''Handeln pieces movement'''
+        coord = tuple(coord)
         attack = False
         # first check if other pieces on coord
         if cls.players[inv_c(piece.color)].get_piece(coord):
@@ -204,12 +205,16 @@ class Game:
             if coord in AttCoord.get(piece):
                 attacked_piece = cls.get_piece(coord)
                 cls.players[attacked_piece.color].pieces.remove(attacked_piece)
+                # store last move
+                cls.last_move = (piece.coord, coord)
                 piece.move(coord)
                 # pass a turn
                 cls.end_turn(piece.color)
                 return True
         else:
             if coord in PossibleMove.get(piece):
+                # store last move
+                cls.last_move = (piece.coord, coord)
                 piece.move(coord)
                 if piece.name == 'pawn':
                     cls.check_pawn_promotion(piece)
@@ -218,8 +223,6 @@ class Game:
                 return True
             elif piece.name == 'king':
                 cls.check_castle_moves(piece)
-
-        cls.deselect()
 
     @classmethod
     def check_castle_moves(cls, king):
@@ -274,16 +277,10 @@ class Game:
             return piece
 
     @classmethod
-    def deselect(cls):
-        for case in Board.cases:
-            case.possible_move = False
-
-    @classmethod
     def end_turn(cls, color):
         cls.turn = not cls.turn
         # check if the game is over
         cls.check_end_game(inv_c(color))
-        cls.deselect()
 
     @classmethod
     def check_end_game(cls, color):
@@ -293,8 +290,9 @@ class Game:
             pmoves = cls.get_possibles_moves(piece)
             poss_moves.extend(pmoves)
         
-        # send turn infos to menu
-        cls.menu.set_game_info(color, len(poss_moves))
+        if cls.menu:
+            # send turn infos to menu
+            cls.menu(color, len(poss_moves))
 
         if not poss_moves: # player can't move
             if cls.check_for_check(color): # if player in check and can't move -> checkmate
@@ -304,33 +302,22 @@ class Game:
             cls.ended = True
 
     @classmethod
-    def display(cls):
-        cls.players['white'].display()
-        cls.players['black'].display()
-
-import pickle
-
-class API:
-    
-    @classmethod
     def get_board_state(cls):
+        '''Return dict with coord x,y, piecename,color for each case'''
         coords_states = []
         for x in range(8):
             for y in range(8):
-                piece = Game.get_piece((x,y))
+                piece = ChessGame.get_piece((x,y))
                 if piece:
                     d = {'x':x,'y':y,'piece':piece.name,'color':piece.color}
                 else:
                     d = {'x':x,'y':y,'piece':None,'color':None}
                 coords_states.append(d)
-        
-        # store state
-        with open('state.pickle','wb') as file:
-            pickle.dump(coords_states, file)
         return coords_states
 
     @classmethod
-    def run(cls, player):
-        pass
-
+    def display(cls):
+        '''If display method of Piece is implemented: display pieces'''
+        cls.players['white'].display()
+        cls.players['black'].display()
         

@@ -1,7 +1,6 @@
-from base import E, scale, screen, Button, C, inter
-from board import Board
-from menu import PromMenu
-from move import AttCoord, PossibleMove
+from interface import E, scale, Interface, Button, C
+from graphics import Board, PromMenu
+from move import PossibleMove
 from pieces import Pawn, Bishop, King, Queen, Rock, Knight
 import pygame
 from math import floor
@@ -13,35 +12,44 @@ class LivePlay:
     '''
     Control object for Game control
     
-    Work with interface: screen, inter...
+    Work with interface/pygame
     
     Methods for control:
         play_turn()
         promote(piece)
     '''
-    Game = None
+    ChessGame = None
     def __init__(self, color):
         self.color = color
-        # get player obj from Game
-        self.player = self.Game.players[color]
+        # get player obj from ChessGame
+        self.player = self.ChessGame.players[color]
         self.pmenu = PromMenu(self.player,POS_PMENU)
         self.case_selected = None
         self.select = False
 
+    def set_player(self, player):
+        '''Setter of player'''
+        self.player = player
+
     def play_turn(self):
         '''Play turn'''
-        turn_state = self.Game.turn
+        turn_state = self.ChessGame.turn
         
-        while turn_state == self.Game.turn and inter.running:
-            pressed, events = inter.run(fill=False)
+        while turn_state == self.ChessGame.turn and Interface.running:
+            pressed, events = Interface.run(fill=False)
             self.react_events(events, pressed)
             Board.display()
-            self.Game.display()
+            self.ChessGame.display()
         
+        self.deselect()
+    
+    def deselect(self):
         # reset state
         self.select = False
         self.case_selected.deselect()
-    
+        for case in Board.cases:
+            case.possible_move = False
+
     def handeln_case(self, coord):
         '''deselect previous case and select new one'''
 
@@ -65,7 +73,7 @@ class LivePlay:
             self.handeln_case(coord)
 
             # display possible moves
-            poss_moves = self.Game.get_possibles_moves(selected_piece)
+            poss_moves = self.ChessGame.get_possibles_moves(selected_piece)
 
             if selected_piece.name == 'king':
                 # add castle moves
@@ -91,7 +99,7 @@ class LivePlay:
         done = False
         # freeze normal execution (in main), wait for player to decide which piece take
         while not done:
-            pressed, events = inter.run(fill=False) # keep all displayed thing
+            pressed, events = Interface.run(fill=False) # keep all displayed thing
             self.pmenu.display()
             self.pmenu.react_events(events, pressed)
             if self.pmenu.state == 'done':
@@ -125,8 +133,9 @@ class LivePlay:
                 if not self.select:
                     self.check_select_piece((x,y), self.player)
                 else:
-                    done = self.Game.handeln_movement(self.piece_selected, (x,y))
+                    done = self.ChessGame.handeln_movement(self.piece_selected, (x,y))
                     if not done:
-                        # reset state
-                        self.select = False
-                        self.case_selected.deselect()
+                        self.deselect()
+    
+    def display(self):
+        self.player.display()
