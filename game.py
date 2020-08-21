@@ -1,5 +1,5 @@
 from pieces import Pawn, Bishop, King, Queen, Rock, Knight
-from move import AttCoord, PossibleMove
+from move import PossibleMove
 
 
 # classic pieces placement
@@ -109,7 +109,9 @@ class ChessGame:
     Set start configuration:
         pass configurations in set_players() methods
     
-    Can set a menu.
+    Can set a menu:
+        update at each end of turn
+        call menu attribute: pass color and n pos moves
     '''
     menu = None
     # conf - change white/black conf to change pieces a start
@@ -132,9 +134,8 @@ class ChessGame:
             cls.controls['white'].set_player(players['white'])
             cls.controls['black'].set_player(players['black'])
 
-        # set ChessGame/players in other 'static' objects
-        AttCoord.ChessGame = cls
-        PossibleMove.players = players
+        # set ChessGame/players in other 'static' object
+        PossibleMove.ChessGame = cls
             
     @classmethod
     def set_players(cls, white_config=None, black_config=None):
@@ -174,55 +175,69 @@ class ChessGame:
     @classmethod
     def check_for_check(cls, color, kingcheck=True):
         '''Check if king is attacked by an opponent piece'''
-        if color == 'white':
-            king_coord = cls.players['white'].king.coord
-            # check if king coord is attack by an opponent piece
-            for piece in cls.players['black'].pieces:
-                if king_coord in AttCoord.get(piece, kingcheck=kingcheck):
-                    return True
-        else:
-            king_coord = cls.players['black'].king.coord
-            # check if king coord is attack by an opponent piece
-            for piece in cls.players['white'].pieces:
-                if king_coord in AttCoord.get(piece, kingcheck=kingcheck):
-                    return True
+        king_coord = cls.players[color].king.coord
+        # check if king coord is attack by an opponent piece
+        for piece in cls.players[inv_c(color)].pieces:
+            if king_coord in PossibleMove.get(piece, True, kingcheck=kingcheck):
+                return True
 
     @classmethod
     def handeln_movement(cls, piece, coord):
         '''Handeln pieces movement'''
+        
         coord = tuple(coord)
-        attack = False
-        # first check if other pieces on coord
-        if cls.players[inv_c(piece.color)].get_piece(coord):
-            attack = True
+        is_attacking = cls.is_attacking(piece, coord)
 
-        return cls.move(piece, coord, attack)
-    
+        # first look for castle
+        if piece.name == 'king':
+            if cls.check_castle_moves(piece):
+                return True
+        
+        if cls.check_can_move(piece, coord, is_attacking):
+            cls.move(piece, coord, is_attacking)
+            return True
+
     @classmethod
-    def move(cls, piece, coord, attack):
-        '''Check if coord are in piece's possible moves -> play move'''
-        if attack:
-            if coord in AttCoord.get(piece):
-                attacked_piece = cls.get_piece(coord)
-                cls.players[attacked_piece.color].pieces.remove(attacked_piece)
-                # store last move
-                cls.last_move = (piece.coord, coord)
-                piece.move(coord)
-                # pass a turn
-                cls.end_turn(piece.color)
-                return True
-        else:
-            if coord in PossibleMove.get(piece):
-                # store last move
-                cls.last_move = (piece.coord, coord)
-                piece.move(coord)
-                if piece.name == 'pawn':
-                    cls.check_pawn_promotion(piece)
-                # pass a turn
-                cls.end_turn(piece.color)
-                return True
-            elif piece.name == 'king':
-                cls.check_castle_moves(piece)
+    def is_attacking(cls, piece, coord):
+        if cls.players[inv_c(piece.color)].get_piece(coord):
+            return True
+
+    @classmethod
+    def check_can_move(cls, piece, coord, is_attacking):
+        '''
+        Check if the given piece can move at the given destination
+        '''
+        # first check if other pieces on coord
+        if cls.players[piece.color].get_piece(coord):
+            # other piece of same color on destination case -> can't move
+            return False
+
+        if coord in PossibleMove.get(piece, is_attacking):
+            return True
+        
+
+    @classmethod
+    def move(cls, piece, coord, is_attacking):
+        '''
+        Play the given move
+        '''
+        if is_attacking:
+            # remove the attacked piece
+            attacked_piece = cls.get_piece(coord)
+            cls.players[attacked_piece.color].pieces.remove(attacked_piece)
+                
+        # store last move
+        cls.last_move = (piece.coord, coord)
+
+        # move piece
+        piece.move(coord)
+
+        # look for pawn promotion
+        if piece.name == 'pawn':
+            cls.check_pawn_promotion(piece)
+        
+        # pass the turn
+        cls.end_turn(piece.color)
 
     @classmethod
     def check_castle_moves(cls, king):
@@ -237,6 +252,7 @@ class ChessGame:
             rock.move((3, line))
             # pass a turn
             cls.end_turn(king.color)
+            return True
         
         if can_short:
             rock = cls.players[king.color].get_piece((7, line))
@@ -245,6 +261,7 @@ class ChessGame:
             rock.move((5, line))
             # pass a turn
             cls.end_turn(king.color)
+            return True
 
     @classmethod
     def check_pawn_promotion(cls, piece):
@@ -259,13 +276,16 @@ class ChessGame:
     @classmethod
     def get_possibles_moves(cls, piece):
         '''Get all possible moves (for a piece)'''
-        movements = PossibleMove.get(piece)
-        alls = AttCoord.get(piece)
-        for coord in alls:
-            if cls.players[inv_c(piece.color)].get_piece(coord):
-                movements.append(coord)
+        if piece.name == 'pawn':
+            movements = PossibleMove.get(piece, False) # for pawn attacking and non-attacking moves are completely differents
+            attacks = PossibleMove.get(piece, True)
+            for coord in attacks:
+                if cls.players[inv_c(piece.color)].get_piece(coord):
+                    movements.append(coord)
+        else:
+            movements = PossibleMove.get(piece, True) # get movements as if the piece was attacking -> include capture moves
         return movements
-                
+
     @classmethod
     def get_piece(cls, coord):
         '''Return piece corresponding coord (of both color)'''
@@ -307,7 +327,7 @@ class ChessGame:
         coords_states = []
         for x in range(8):
             for y in range(8):
-                piece = ChessGame.get_piece((x,y))
+                piece = cls.get_piece((x,y))
                 if piece:
                     d = {'x':x,'y':y,'piece':piece.name,'color':piece.color}
                 else:

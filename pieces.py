@@ -1,10 +1,10 @@
 
 class Piece:
     def __init__(self, coord, color):
-        self.coord = coord
+        self.coord = list(coord)
         self.color = color
         self.moved = False
-    
+
     @property
     def x(self):
         return self.coord[0]
@@ -35,6 +35,14 @@ class Piece:
         Allow to not import pygame and base in this file
         '''
         pass
+    
+    def on_resize(self, dim_object):
+        '''Only implemented if graphics
+        
+        Allow to not import pygame and base in this file
+        '''
+        pass
+
 
 class Pawn(Piece):
     name = 'pawn'
@@ -47,6 +55,7 @@ class Pawn(Piece):
                 self.img = self.black_img
             else:
                 self.img = self.white_img
+            self.original_img = self.img.copy()
 
 class Bishop(Piece):
     name = 'bishop'
@@ -59,6 +68,7 @@ class Bishop(Piece):
                 self.img = self.black_img
             else:
                 self.img = self.white_img
+            self.original_img = self.img.copy()
         
 class Rock(Piece):
     name = 'rock'
@@ -71,6 +81,7 @@ class Rock(Piece):
                 self.img = self.black_img
             else:
                 self.img = self.white_img
+            self.original_img = self.img.copy()
 
 class Queen(Piece):
     name = 'queen'
@@ -83,6 +94,7 @@ class Queen(Piece):
                 self.img = self.black_img
             else:
                 self.img = self.white_img
+            self.original_img = self.img.copy()
 
 class King(Piece):
     name = 'king'
@@ -95,6 +107,7 @@ class King(Piece):
                 self.img = self.black_img
             else:
                 self.img = self.white_img
+            self.original_img = self.img.copy()
 
 class Knight(Piece):
     name = 'knight'
@@ -107,6 +120,7 @@ class Knight(Piece):
                 self.img = self.black_img
             else:
                 self.img = self.white_img
+            self.original_img = self.img.copy()
 
 
 

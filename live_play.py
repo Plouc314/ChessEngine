@@ -1,12 +1,12 @@
-from interface import E, scale, Interface, Button, C
+from interface import Interface, Button, C
 from graphics import Board, PromMenu
 from move import PossibleMove
 from pieces import Pawn, Bishop, King, Queen, Rock, Knight
 import pygame
 from math import floor
 
-DIMC = E(200)
-POS_PMENU = scale((1600, 800))
+DIMC = 200
+POS_PMENU = (1600, 800)
 
 class LivePlay:
     '''
@@ -19,6 +19,7 @@ class LivePlay:
         promote(piece)
     '''
     ChessGame = None
+    menu = None
     def __init__(self, color):
         self.color = color
         # get player obj from ChessGame
@@ -36,9 +37,10 @@ class LivePlay:
         turn_state = self.ChessGame.turn
         
         while turn_state == self.ChessGame.turn and Interface.running:
-            pressed, events = Interface.run(fill=False)
+            pressed, events = Interface.run()
             self.react_events(events, pressed)
             Board.display()
+            self.menu.display()
             self.ChessGame.display()
         
         self.deselect()
@@ -99,8 +101,13 @@ class LivePlay:
         done = False
         # freeze normal execution (in main), wait for player to decide which piece take
         while not done:
-            pressed, events = Interface.run(fill=False) # keep all displayed thing
+            pressed, events = Interface.run()
+            # display everything
+            Board.display()
+            self.menu.display()
+            self.ChessGame.display()
             self.pmenu.display()
+            
             self.pmenu.react_events(events, pressed)
             if self.pmenu.state == 'done':
                 done = True
@@ -121,14 +128,15 @@ class LivePlay:
         self.player.pieces.remove(piece)
         # add new piece
         self.player.pieces.append(new_piece)
+        Interface.add_resizable_objs([new_piece])
 
     def react_events(self, events, pressed):
         for event in events:
             if event.type == pygame.MOUSEBUTTONUP:
                 # check for selected pieces
                 mouse_pos = pygame.mouse.get_pos()
-                x = floor(mouse_pos[0]/DIMC)
-                y = floor(mouse_pos[1]/DIMC)
+                x = floor(mouse_pos[0]/Interface.dim.E(DIMC))
+                y = floor(mouse_pos[1]/Interface.dim.E(DIMC))
                 # if nothing selected -> select
                 if not self.select:
                     self.check_select_piece((x,y), self.player)

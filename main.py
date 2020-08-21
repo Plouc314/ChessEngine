@@ -1,6 +1,6 @@
-from interface import Interface
+from interface import Interface, Font
 
-Interface.setup((2200, 1600), 'Chess', scale_factor=0.7)
+Interface.setup((2200, 1600), 'Chess')
 
 from graphics import Board, Menu
 from game import ChessGame
@@ -16,7 +16,7 @@ ChessGame.menu = menu
 white_conf = [
     {'name':'king','coord':(2,7),'c':'white'},
     {'name':'pawn','coord':(0,6),'c':'white'},
-    {'name':'pawn','coord':(1,6),'c':'white'},
+    {'name':'pawn','coord':(1,1),'c':'white'},
     {'name':'pawn','coord':(2,6),'c':'white'},
     {'name':'pawn','coord':(5,6),'c':'white'},
     {'name':'queen','coord':(4,7),'c':'white'},
@@ -29,17 +29,21 @@ black_conf = [
     {'name':'rock','coord':(7,0),'c':'black'},
 ]
 
-ChessGame.set_players()
+ChessGame.set_players(white_config=white_conf, black_config=black_conf)
+
+Interface.add_resizable_objs(ChessGame.players['white'].pieces)
+Interface.add_resizable_objs(ChessGame.players['black'].pieces)
 
 LivePlay.ChessGame = ChessGame
+LivePlay.menu = menu
 
-#agent_white = bruteforce.Agent('white', ChessGame)
-#agent_black = bruteforce.Agent('black', ChessGame)
+# agent_white = bruteforce.Agent('white', ChessGame)
+# agent_black = bruteforce.Agent('black', ChessGame)
 
 
-ChessGame.set_control_methods(LivePlay('white'), LivePlay('black'))
+ChessGame.set_control_methods(LivePlay('white'),LivePlay('black'))
 
-Tests.run(ChessGame)
+# Tests.run(ChessGame)
 
 while Interface.running:
     pressed, events = Interface.run()

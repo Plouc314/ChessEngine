@@ -1,41 +1,38 @@
-from interface import Form, Interface, scale, C, E, Form, Button, TextBox, Cadre, Font
+from interface import Form, Interface, C, Form, Button, TextBox, Cadre, Font
 from pieces import Piece, Pawn, Bishop, King, Queen, Rock, Knight
 import pygame
 
-DIM_CASE = scale((200,200))
-DIM_PM = scale((60,60))
-MARGE_PM = E(70)
+DIM_CASE = (200,200)
+DIM_PM = (60,60)
+MARGE_PM = 70
 
 C1 = (173,216,230)
 C2 = (153,196,210)
 CS = C.RED
 
-class Case:
-    poss_mov_surf = pygame.Surface(DIM_PM)
-    poss_mov_surf.fill(C.PURPLE)
+class Case(Form):
+    poss_mov_form = Form(DIM_PM, (0,0), C.PURPLE)
     def __init__(self, dim, pos, color):
-        self.surf = pygame.Surface(dim)
-        self.color = color
-        self.surf.fill(color)
-        self.pos = pos
+        super().__init__(dim, pos, color)
         self.possible_move = False
-        self.coord = (int(pos[0]/E(200)), int(pos[1]/E(200)))
+        self.coord = (int(pos[0]/200), int(pos[1]/200))
     
     def select(self):
-        self.surf.fill(CS)
+        self.surf['main'].fill(CS)
     
     def deselect(self):
-        self.surf.fill(self.color)
+        self.surf['main'].fill(self.COLOR)
     
     def display(self):
-        Interface.screen.blit(self.surf, self.pos)
+        super().display()
 
         if self.possible_move:
-            x = self.pos[0] + MARGE_PM
-            y = self.pos[1] + MARGE_PM
-            Interface.screen.blit(self.poss_mov_surf,(x,y))
+            x = self.pos[0] + Interface.dim.E(MARGE_PM)
+            y = self.pos[1] + Interface.dim.E(MARGE_PM)
+            self.poss_mov_form.set_pos((x,y))
+            self.poss_mov_form.display()
 
-DIM_BOARD = scale((1600,1600))
+DIM_BOARD = (1600,1600)
 
 class Board:
 
@@ -47,7 +44,7 @@ class Board:
             alter = not alter
             for y in range(8):
                 alter = not alter
-                pos = (E(200)*x, E(200)*y)
+                pos = (200*x, 200*y)
                 if alter:
                     color = C1
                 else:
@@ -70,7 +67,7 @@ class Board:
 # auto create cases
 Board.create_cases()
 
-DIM_PIECE = scale((160,160))
+DIM_PIECE = (160,160)
 
 # load imgs
 white_pawn = pygame.image.load('imgs/pawn2.png')
@@ -98,19 +95,23 @@ black_king = pygame.transform.scale(black_king,DIM_PIECE)
 black_knight = pygame.image.load('imgs/knight.png')
 black_knight = pygame.transform.scale(black_knight,DIM_PIECE)
 
-# func that will be implemented as Piece.display
+# funcs that will be implemented as Piece.display, Piece.on_rezise
 def display(self):
-    marge = int((DIMC - DIM_PIECE[0])/2)
-    x = self.coord[0] * DIMC + marge
-    y = self.coord[1] * DIMC + marge
+    marge = Interface.dim.E((DIMC - DIM_PIECE[0])/2)
+    x = self.coord[0] * Interface.dim.E(DIMC) + marge
+    y = self.coord[1] * Interface.dim.E(DIMC) + marge
     Interface.screen.blit(self.img, (x,y))
+
+def on_resize(self, factor):
+    self.img = pygame.transform.scale(self.original_img, [round(factor*DIM_PIECE[0]), round(factor*DIM_PIECE[1])])
 
 def setup_pieces():
     '''
-    Implement display method in Piece,
+    Implement display methods in Piece,
     set imgs
     '''
     Piece.display = display
+    Piece.on_resize = on_resize
 
     Pawn.black_img = black_pawn
     Pawn.white_img = white_pawn
@@ -133,18 +134,18 @@ def setup_pieces():
 # when import: auto setup pieces
 setup_pieces()
 
-POS_MENU = scale((1600, 0))
+POS_MENU = (1600, 0)
 
 class Menu:
     default_text_turn = "Turn white"
     default_text_poss_moves = "Possible moves: 20"
     def __init__(self, ChessGame):
         self.ChessGame = ChessGame
-        self.cadre = Cadre((E(600), E(1600)), C.WHITE, POS_MENU)
-        self.text_turn = TextBox((E(400), E(80)), C.WHITE, (POS_MENU[0]+E(50),POS_MENU[1]+E(50)),"Turn white",font=Font.f50, centered=False)
-        self.text_poss_moves = TextBox((E(600), E(60)), C.WHITE, (POS_MENU[0]+E(50),POS_MENU[1]+E(210)),"Possible moves: 20",font=Font.f50, centered=False)
-        self.text_end = TextBox((E(450), E(120)), C.WHITE, (POS_MENU[0]+E(50),POS_MENU[1]+E(360)),"",font=Font.f50)
-        self.button_start = Button((E(450), E(100)), C.LIGHT_GREEN, (POS_MENU[0]+E(50),POS_MENU[1]+E(590)),"Start new  game",font=Font.f50)
+        self.cadre = Cadre((600, 1600), POS_MENU)
+        self.text_turn = TextBox((400, 80), (POS_MENU[0]+50,POS_MENU[1]+50),text="Turn white",font=Font.f(50), centered=False)
+        self.text_poss_moves = TextBox((600, 60), (POS_MENU[0]+50,POS_MENU[1]+210),text="Possible moves: 20",font=Font.f(50), centered=False)
+        self.text_end = TextBox((450, 120), (POS_MENU[0]+50,POS_MENU[1]+360),font=Font.f(50))
+        self.button_start = Button((450, 100), (POS_MENU[0]+50,POS_MENU[1]+590), C.LIGHT_GREEN,text="Start new  game",font=Font.f(50))
         self.state = 'start'
 
     def display(self):
@@ -160,6 +161,9 @@ class Menu:
             if self.button_start.pushed(events):
                 self.state = 'run'
                 self.ChessGame.set_players()
+                # re-add pieces
+                Interface.add_resizable_objs(self.ChessGame.players['white'].pieces)
+                Interface.add_resizable_objs(self.ChessGame.players['black'].pieces)
     
     def __call__(self, turn, poss_moves):
         '''Call in ChessGame.check_end_game'''
@@ -172,8 +176,8 @@ class Menu:
         self.text_poss_moves.set_text(self.default_text_poss_moves)
         self.state = 'start'
 
-DIM_PBUTTON = scale((200,200))
-DIMC = E(200)
+DIM_PBUTTON = (200,200)
+DIMC = 200
 
 
 class PromMenu:
@@ -190,10 +194,10 @@ class PromMenu:
             rock_img = black_rock
             knight_img = black_knight
 
-        self.button_queen = Button(DIM_PBUTTON, C.LIGHT_GREY, (pos[0]+E(50),pos[1]),image=queen_img)
-        self.button_bishop = Button(DIM_PBUTTON, C.LIGHT_GREY, (pos[0]+E(300),pos[1]),image=bishop_img)
-        self.button_rock = Button(DIM_PBUTTON, C.LIGHT_GREY, (pos[0]+E(50),pos[1]+E(250)),image=rock_img)
-        self.button_knight = Button(DIM_PBUTTON, C.LIGHT_GREY, (pos[0]+E(300),pos[1]+E(250)),image=knight_img)
+        self.button_queen = Button(DIM_PBUTTON, (pos[0]+50,pos[1]),surface=queen_img, surf_font_color=C.LIGHT_GREY)
+        self.button_bishop = Button(DIM_PBUTTON, (pos[0]+300,pos[1]),surface=bishop_img, surf_font_color=C.LIGHT_GREY)
+        self.button_rock = Button(DIM_PBUTTON, (pos[0]+50,pos[1]+250),surface=rock_img, surf_font_color=C.LIGHT_GREY)
+        self.button_knight = Button(DIM_PBUTTON, (pos[0]+300,pos[1]+250),surface=knight_img, surf_font_color=C.LIGHT_GREY)
         self.state = 'wait'
     
     def react_events(self, events, pressed):
