@@ -4,6 +4,7 @@ class Piece:
         self.coord = list(coord)
         self.color = color
         self.moved = False
+        self.just_moved = False
 
     @property
     def x(self):
@@ -25,8 +26,18 @@ class Piece:
         return f'{self.color} {self.name}: ({self.x},{self.y})'
 
     def move(self, coord):
+        '''
+        Move the piece and handeln the piece movement history
+        '''
+
         self.coord = coord
+        
+        # handeln movement history -> pawn, castling
+        if not self.moved:
+            self.just_moved = True
+        
         self.moved = True
+        
         print('[MOVE]', self)
 
     def display(self):

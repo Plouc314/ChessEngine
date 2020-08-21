@@ -82,6 +82,12 @@ class LivePlay:
                 can_long, can_short = PossibleMove.get_castle(player.color)
 
                 self.handeln_castle_case(player.color, can_long, can_short)
+            elif selected_piece.name == 'pawn':
+                # look for en passant move
+                en_passant_coord = PossibleMove.get_en_passant(selected_piece)
+
+                if en_passant_coord != None:
+                    poss_moves.append(en_passant_coord)
 
             for coord in poss_moves:
                 case = Board.get_case(coord)

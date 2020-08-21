@@ -86,6 +86,13 @@ class Player:
             if piece.name == name:
                 return piece
 
+    def reset_pawn_status(self):
+        '''
+        Reset attribute 'just_moved' to false on every pawn -> en passant
+        '''
+        for piece in self.pieces:
+            piece.just_moved = False
+
     def display(self):
         '''Piece.display must be implemented'''
         for piece in self.pieces:
@@ -168,8 +175,10 @@ class ChessGame:
     def play_turn(cls):
         # execute turn
         if cls.turn:
+            cls.players['white'].reset_pawn_status()
             cls.control_white.play_turn()
         else:
+            cls.players['black'].reset_pawn_status()
             cls.control_black.play_turn()
 
     @classmethod
@@ -188,13 +197,26 @@ class ChessGame:
         coord = tuple(coord)
         is_attacking = cls.is_attacking(piece, coord)
 
-        # first look for castle
-        if piece.name == 'king':
+        as_moved = False
+
+        # special moves
+        if piece.name == 'king': # look for castle
             if cls.check_castle_moves(piece):
-                return True
+                as_moved = True
+        elif piece.name == 'pawn': # look for en passant move
+            en_passant_coord = PossibleMove.get_en_passant(piece)
+            if coord == en_passant_coord:
+                cls.handeln_en_passant(piece, coord)
+                as_moved = True
         
-        if cls.check_can_move(piece, coord, is_attacking):
-            cls.move(piece, coord, is_attacking)
+        if not as_moved: # if wasn't a special move
+            if cls.check_can_move(piece, coord, is_attacking):
+                cls.move(piece, coord, is_attacking)
+                as_moved = True
+        
+        # in case of move -> end turn
+        if as_moved:
+            cls.end_turn(piece.color)
             return True
 
     @classmethod
@@ -215,7 +237,6 @@ class ChessGame:
         if coord in PossibleMove.get(piece, is_attacking):
             return True
         
-
     @classmethod
     def move(cls, piece, coord, is_attacking):
         '''
@@ -235,9 +256,23 @@ class ChessGame:
         # look for pawn promotion
         if piece.name == 'pawn':
             cls.check_pawn_promotion(piece)
-        
-        # pass the turn
-        cls.end_turn(piece.color)
+
+    @classmethod
+    def handeln_en_passant(cls, piece, coord):
+        '''
+        In case of en passant move, move attacking pawn and remove attacked pawn
+        '''
+        piece.move(coord)
+
+        # get attacked pawn
+        if piece.color == 'white':
+            dy = 1
+        else:
+            dy = -1
+
+        opp_pawn = cls.players[inv_c(piece.color)].get_piece( [coord[0], coord[1] + dy] )
+        cls.players[inv_c(piece.color)].pieces.remove(opp_pawn)
+
 
     @classmethod
     def check_castle_moves(cls, king):
@@ -250,8 +285,6 @@ class ChessGame:
             # execute long castle
             king.move((2,line))
             rock.move((3, line))
-            # pass a turn
-            cls.end_turn(king.color)
             return True
         
         if can_short:
@@ -259,8 +292,6 @@ class ChessGame:
             # execute short castle
             king.move((6,line))
             rock.move((5, line))
-            # pass a turn
-            cls.end_turn(king.color)
             return True
 
     @classmethod

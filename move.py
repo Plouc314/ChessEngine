@@ -1,5 +1,11 @@
 import itertools
 
+def inv_c(color):
+    if color == 'white':
+        return 'black'
+    else:
+        return 'white'
+
 class PossibleMove:
     '''
     Search possible moves for pieces  
@@ -7,12 +13,18 @@ class PossibleMove:
     Use get_castle() for castle moves
     '''
     ChessGame = None
+    static_moves = []
 
     @classmethod
     def get(cls, piece, is_attacking, kingcheck=True):
         '''
         Return the possible moves for a piece
         '''
+
+        # first store the opponent static moves
+        if kingcheck:
+            cls.get_static_opp_moves(piece.color)
+
         if piece.name == 'pawn':
             coords = cls.get_pawn(piece, is_attacking, kingcheck=kingcheck)
         elif piece.name == 'bishop':
@@ -31,6 +43,18 @@ class PossibleMove:
     def in_dim(cls, coord):
         if not (0 > coord[0] or coord[0] > 7 or 0 > coord[1] or coord[1] > 7):
             return True
+
+    @classmethod
+    def get_static_opp_moves(cls, color):
+        '''
+        Get the possible moves of the opponent pawns and knights, 
+        this moves can be calulated only one time as they can't give discover checks.  
+        Kingcheck are ignored as the purpose of this moves is to look for kingcheck on our own king
+        '''
+        cls.static_moves = []
+        for piece in cls.ChessGame.players[inv_c(color)].pieces:
+            if piece.name == 'pawn' or piece.name == 'knight':
+                cls.static_moves += cls.get(piece, True, kingcheck=False)
 
     @classmethod
     def get_coord_state(cls, coord, piece, kingcheck=False):
@@ -65,6 +89,25 @@ class PossibleMove:
                 return 'opponent'
         
     @classmethod
+    def _is_check(cls, color):
+        '''
+        Check if the king of the selected player is on a attacked case
+        '''
+
+        king_coord = tuple(cls.ChessGame.players[color].king.coord)
+
+        if king_coord in cls.static_moves:
+            return True
+
+        # check with bishop, rock, queen
+        for piece in cls.ChessGame.players[inv_c(color)].pieces:
+            if piece.name == 'bishop' or piece.name == 'rock' or piece.name == 'queen':
+                if king_coord in cls.get(piece, True, kingcheck=False):
+                    return True
+
+        return False
+
+    @classmethod
     def is_kingcheck(cls, coord, piece, attack):
         '''
         Check if movement cause kingcheck
@@ -74,11 +117,12 @@ class PossibleMove:
         if not attack:
             piece.coord = coord
             # check if there is a kingcheck
-            is_check = cls.ChessGame.check_for_check(piece.color, False)
+            is_check = cls._is_check(piece.color)
+
+            # revert changes
             piece.coord = original_coord
-            if is_check:
-                # check so can't move piece
-                return True
+            
+            return is_check
         else:
             # remove temporarily the attacked piece
             attacked_piece = cls.ChessGame.get_piece(coord)
@@ -86,14 +130,12 @@ class PossibleMove:
             # move the attacking piece AFTER
             piece.coord = coord
             # check if there is a kingcheck
-            is_check = cls.ChessGame.check_for_check(piece.color, False)
+            is_check = cls._is_check(piece.color)
             # revert changes
             piece.coord = original_coord
             cls.ChessGame.players[attacked_piece.color].pieces.append(attacked_piece)
-            if is_check:
-                # check so can't move piece
-                return True
-        return False
+            
+            return is_check
                 
     @classmethod
     def create_coords(cls, dy, dx, coords, piece, is_attacking=True, kingcheck=True):
@@ -245,6 +287,37 @@ class PossibleMove:
         return coords
 
     @classmethod
+    def get_en_passant(cls, piece):
+        '''
+        Look for en passant move, if found one, return pawn target coord
+        '''
+        if piece.color == 'white':
+            line = 3
+            dy = -1
+        else:
+            line = 4
+            dy = 1
+        
+        if piece.coord[1] == line:
+            # look for opp pawn
+            coord = [piece.coord[0] + 1, line]
+            opp_piece = cls.ChessGame.players[inv_c(piece.color)].get_piece(coord)
+
+            if opp_piece:
+                if opp_piece.name == 'pawn' and opp_piece.just_moved:
+                    # dont return the coord of the pawn -> return the coord where the pawn "should" go
+                    return (coord[0], coord[1] + dy)
+            
+            coord = [piece.coord[0] - 1, line]
+            opp_piece = cls.ChessGame.players[inv_c(piece.color)].get_piece(coord)
+
+            if opp_piece:
+                if opp_piece.name == 'pawn' and opp_piece.just_moved:
+                    # dont return the coord of the pawn -> return the coord where the pawn "should" go
+                    return (coord[0], coord[1] + dy)
+        
+
+    @classmethod
     def get_castle(cls, color):
         '''
         Return if can long castle, can short castle
@@ -278,6 +351,10 @@ class PossibleMove:
     def is_setup_long_castle(cls, color):
         line = cls.get_line(color)
 
+        # check if king is in right place
+        if not cls.ChessGame.players[color].king.coord == (4, line):
+            return
+
         # check king and rocks didn't move
         rock = cls.ChessGame.players[color].get_piece((0,line))
         if rock:
@@ -293,6 +370,10 @@ class PossibleMove:
     def is_setup_short_castle(cls, color):
         line = cls.get_line(color)
         
+        # check if king is in right place
+        if not cls.ChessGame.players[color].king.coord == (4, line):
+            return
+
         # check king and rocks didn't move
         rock = cls.ChessGame.players[color].get_piece((7,line))
         if rock:

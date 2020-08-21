@@ -29,7 +29,7 @@ black_conf = [
     {'name':'rock','coord':(7,0),'c':'black'},
 ]
 
-ChessGame.set_players(white_config=white_conf, black_config=black_conf)
+ChessGame.set_players()#white_config=white_conf, black_config=black_conf)
 
 Interface.add_resizable_objs(ChessGame.players['white'].pieces)
 Interface.add_resizable_objs(ChessGame.players['black'].pieces)
